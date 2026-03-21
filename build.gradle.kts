@@ -22,6 +22,8 @@ dependencies {
     implementation ("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.hibernate:hibernate-core:7.3.0.Final")
     implementation("org.projectlombok:lombok")
     implementation("org.hibernate.validator:hibernate-validator")
     implementation("jakarta.validation:jakarta.validation-api")

@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
   postgres:
-    container_name: blog-postgres
+    container_name: market-postgres
     image: postgres:14
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DBNAME: blog
+      POSTGRES_DBNAME: market
       PGDATA: /data/postgres
     ports:
       - "5432:5432"
