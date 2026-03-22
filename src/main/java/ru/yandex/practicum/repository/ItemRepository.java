@@ -8,10 +8,10 @@ import ru.yandex.practicum.model.Item;
 import java.util.Optional;
 
 public interface ItemRepository extends JpaRepository<Item, Long> {
-    // Поиск по фрагменту в двух полях с пагинацией
-    Page<Item> findByTitleContainingOrDescriptionContainingIgnoreCase(
-            String firstName,
-            String lastName,
+
+    Page<Item> findByTitleContainingOrDescriptionContainingIgnoreCaseOrder(
+            String searchTitle,
+            String searchDescription,
             Pageable pageable
     );
 
