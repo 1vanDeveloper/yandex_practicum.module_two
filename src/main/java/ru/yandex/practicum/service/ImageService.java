@@ -12,7 +12,6 @@ import ru.yandex.practicum.repository.ImageRepository;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.NoSuchElementException;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**

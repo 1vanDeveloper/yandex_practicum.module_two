@@ -17,10 +17,6 @@ public class Image {
     @Column(name = "item_id", nullable = false)
     private Long itemId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private Item item;
-
     @Column(name = "file_name", length = Integer.MAX_VALUE)
     private String fileName;
 
