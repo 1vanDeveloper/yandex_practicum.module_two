@@ -15,8 +15,6 @@ import ru.yandex.practicum.service.OrderService;
 
 import java.util.concurrent.CompletableFuture;
 
-import static org.yaml.snakeyaml.nodes.Tag.STR;
-
 @Controller
 class WebController {
 
@@ -130,12 +128,20 @@ class WebController {
 
     @Async
     @GetMapping("/orders/{id}")
-    public CompletableFuture<String>  getOrders(Model model,
+    public CompletableFuture<String> getOrders(Model model,
                                                 @PathVariable long id,
                                                 @RequestParam(required = false) Boolean newOrder) {
         return orderService.getOrder(id).thenApplyAsync(viewData -> {
             model.addAttribute("order", viewData);
             return "order";
         });
+    }
+
+    @Async
+    @PostMapping("buy")
+    public CompletableFuture<String> buy(Model model) {
+        return orderService.createOrder(userLogin).thenApplyAsync(id -> UriComponentsBuilder.fromPath("redirect:/orders/" + id)
+                .queryParam("newOrder", true)
+                .toUriString());
     }
 }

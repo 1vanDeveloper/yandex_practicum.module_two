@@ -9,7 +9,6 @@ import ru.yandex.practicum.dto.GetCartViewDto;
 import ru.yandex.practicum.dto.ItemDto;
 import ru.yandex.practicum.model.Cart;
 import ru.yandex.practicum.model.CartItem;
-import ru.yandex.practicum.model.Item;
 import ru.yandex.practicum.repository.CartRepository;
 import ru.yandex.practicum.repository.ItemRepository;
 import ru.yandex.practicum.repository.UserRepository;
@@ -59,7 +58,7 @@ class ImplementedCartService implements CartService {
     @Override
     public CompletableFuture<Void> editCountItemCart(String login, long itemId, ActionDto action) {
         return CompletableFuture.supplyAsync(() ->
-                transactionTemplate.execute(status -> {
+                transactionTemplate.execute(_ -> {
                     editCountItemCartSync(login, itemId, action);
                     return null;
         }));
@@ -119,6 +118,7 @@ class ImplementedCartService implements CartService {
         }
         var newCart = new Cart();
         newCart.setUser(user.get());
+        entityManager.persist(newCart);
         return newCart;
     }
 
