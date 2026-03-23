@@ -1,10 +1,12 @@
 package ru.yandex.practicum.service;
 
+import jakarta.persistence.EntityManager;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import ru.yandex.practicum.model.Image;
 import ru.yandex.practicum.repository.ImageRepository;
@@ -29,24 +31,43 @@ public interface ImageService {
 class ImplementedImageService implements ImageService {
 
     private final ImageRepository imageRepository;
+    private final EntityManager entityManager;
+    private final TransactionTemplate transactionTemplate;
 
-    public ImplementedImageService(ImageRepository imageRepository) {
+    public ImplementedImageService(ImageRepository imageRepository, EntityManager entityManager, TransactionTemplate transactionTemplate) {
         this.imageRepository = imageRepository;
+        this.entityManager = entityManager;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
     public CompletableFuture<Image> saveImage(MultipartFile image, long itemId) {
-        return CompletableFuture.supplyAsync(() -> {
-            var imageEntity = new Image();
-            imageEntity.setItemId(itemId);
-            imageEntity.setFileName(image.getOriginalFilename());
+        return CompletableFuture.supplyAsync(() -> transactionTemplate.execute(_ -> {
+            var optImage = imageRepository.getImageByItemId(itemId);
+            if (optImage.isEmpty()) {
+                var imageEntity = new Image();
+                imageEntity.setItemId(itemId);
+                imageEntity.setFileName(image.getOriginalFilename());
+                try {
+                    imageEntity.setContent(image.getBytes());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                entityManager.persist(imageEntity);
+                return imageEntity;
+            }
+
+            var existsImage = optImage.get();
+            existsImage.setItemId(itemId);
+            existsImage.setFileName(image.getOriginalFilename());
             try {
-                imageEntity.setContent(image.getBytes());
+                existsImage.setContent(image.getBytes());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            return imageRepository.save(imageEntity);
-        });
+            entityManager.merge(existsImage);
+            return existsImage;
+        }));
     }
 
     @Override

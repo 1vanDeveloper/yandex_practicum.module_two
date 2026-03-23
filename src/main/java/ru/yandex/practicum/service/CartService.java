@@ -75,7 +75,7 @@ class ImplementedCartService implements CartService {
         if (existsItem.isPresent()) {
             cartItem = existsItem.get();
         } else if (action == ActionDto.PLUS) {
-            var item = itemRepository.getById(itemId);
+            var item = itemRepository.getItemById(itemId);
             if (item == null) {
                 throw new NoSuchElementException("id: " + itemId);
             }

@@ -16,5 +16,5 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     );
 
     @Query("SELECT i FROM Item i WHERE i.id = :id")
-    Item getById(@Param("id") Long id);
+    Item getItemById(@Param("id") Long id);
 }

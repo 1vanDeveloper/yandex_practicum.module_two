@@ -61,7 +61,7 @@ class ImplementedItemService implements ItemService {
     @Override
     @Transactional(readOnly = true)
     public ItemDto getItemSync(long id) {
-        var item = itemRepository.getById(id);
+        var item = itemRepository.getItemById(id);
         if (item == null) {
             throw new NoSuchElementException("id: " + id);
         }

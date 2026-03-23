@@ -13,7 +13,7 @@ import java.util.concurrent.Executor;
 @Configuration
 @EnableWebMvc
 @EnableAsync
-@ComponentScan(basePackages = {"org.springdoc", "ru.yandex.practicum"})
+@ComponentScan(basePackages = {"ru.yandex.practicum"})
 @PropertySource("classpath:application.properties")
 public class WebConfiguration {
 
