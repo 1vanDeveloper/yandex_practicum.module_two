@@ -1,15 +1,18 @@
 package ru.yandex.practicum.service;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.yandex.practicum.dto.GetItemsViewDto;
+import ru.yandex.practicum.dto.ItemDto;
+import ru.yandex.practicum.dto.PagingDto;
+import ru.yandex.practicum.dto.SortDto;
 import ru.yandex.practicum.model.Item;
 import ru.yandex.practicum.repository.ItemRepository;
-import ru.yandex.practicum.service.model.SortOrder;
 
-import java.util.Optional;
+import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -17,9 +20,9 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface ItemService {
     @Async
-    CompletableFuture<Page<Item>> getItems(String search, SortOrder sortOrder, Integer pageSize, Integer pageNumber);
-    @Async
-    CompletableFuture<Optional<Item>> getItem(long id);
+    CompletableFuture<GetItemsViewDto> getItems(String search, SortDto sortOrder, Integer pageSize, Integer pageNumber);
+
+    ItemDto getItemSync(long id);
 }
 
 @Service
@@ -32,7 +35,7 @@ class ImplementedItemService implements ItemService {
     }
 
     @Override
-    public CompletableFuture<Page<Item>> getItems(String search, SortOrder sortOrder, Integer pageSize, Integer pageNumber) {
+    public CompletableFuture<GetItemsViewDto> getItems(String search, SortDto sortOrder, Integer pageSize, Integer pageNumber) {
         return CompletableFuture.supplyAsync(() -> {
             var sort = switch (sortOrder) {
                 case NO -> Sort.unsorted();
@@ -40,12 +43,39 @@ class ImplementedItemService implements ItemService {
                 case PRICE -> Sort.by(Sort.Direction.ASC, "price");
             };
             var pageParams = PageRequest.of(pageNumber, pageSize, sort);
-            return itemRepository.findByTitleContainingOrDescriptionContainingIgnoreCaseOrder(search, search, pageParams);
+            var page = (search == null || search.isEmpty())
+                    ? itemRepository.findAll(pageParams)
+                    : itemRepository.findByTitleContainingOrDescriptionContainingIgnoreCase(search, search, pageParams);
+            return new GetItemsViewDto(
+                    search,
+                    sortOrder,
+                    page.stream().map(ImplementedItemService::convert).toList(),
+                    new PagingDto(
+                            page.getNumber() + 1,
+                            page.getSize(),
+                            page.hasPrevious(),
+                            page.hasNext()));
         });
     }
 
     @Override
-    public CompletableFuture<Optional<Item>> getItem(long id) {
-        return CompletableFuture.supplyAsync(() -> itemRepository.getItemById(id));
+    @Transactional(readOnly = true)
+    public ItemDto getItemSync(long id) {
+        var item = itemRepository.getById(id);
+        if (item == null) {
+            throw new NoSuchElementException("id: " + id);
+        }
+        return convert(item);
+    }
+
+    private static ItemDto convert(Item item) {
+        return new ItemDto(
+                item.getId(),
+                item.getTitle(),
+                item.getDescription(),
+                "/images/" + item.getId(),
+                item.getPrice().doubleValue(),
+                item.getCount()
+        );
     }
 }
