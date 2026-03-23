@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/images")
 @Validated
-public class ImageController {
+class ImageController {
 
     private final ImageService imageService;
 

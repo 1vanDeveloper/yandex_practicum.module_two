@@ -40,6 +40,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
     testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-thymeleaf-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

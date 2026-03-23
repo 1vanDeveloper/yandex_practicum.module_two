@@ -35,10 +35,3 @@ VALUES
     (2, 3, 'Title 2 first old', 9, 2),
     (3, 3, 'Title 3 first old', 6, 1),
     (4, 3, 'Title 4 first old', 8, 3);
-
-INSERT INTO images (item_id, file_name, content)
-VALUES
-    (1, 'image1.png', ''),
-    (2, 'image2.png', ''),
-    (3, 'image3.png', ''),
-    (4, 'image4.png', '');
