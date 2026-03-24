@@ -5,4 +5,4 @@ up-local-infra:
 	docker-compose up --force-recreate --renew-anon-volumes -d
 
 build:
-	./gradlew jar
+	./gradlew bootJar
