@@ -58,7 +58,7 @@ class WebController {
             @RequestParam(required = false, defaultValue = "1") Integer pageNumber,
             @RequestParam ActionDto action) {
 
-        return cartService.editCountItemCart(userLogin, id, action).thenApplyAsync(_ -> UriComponentsBuilder.fromPath("redirect:/items")
+        return cartService.editCountItemCart(userLogin, id, action).thenApplyAsync(v -> UriComponentsBuilder.fromPath("redirect:/items")
                 .queryParam("search", search)
                 .queryParam("sort", sort)
                 .queryParam("pageNumber", pageNumber)
@@ -85,7 +85,7 @@ class WebController {
             @PathVariable long id,
             @RequestParam ActionDto action) {
         return cartService.editCountItemCart(userLogin, id, action)
-                .thenApplyAsync(_ -> {
+                .thenApplyAsync(v -> {
                     var viewData = itemService.getItemSync(id);
                     model.addAttribute("item", viewData);
                     return "item";
@@ -109,7 +109,7 @@ class WebController {
             @RequestParam long id,
             @RequestParam ActionDto action) {
         return cartService.editCountItemCart(userLogin, id, action)
-                .thenComposeAsync(_ -> cartService.getUserCart(userLogin))
+                .thenComposeAsync(v -> cartService.getUserCart(userLogin))
                 .thenApplyAsync(viewData -> {
                     model.addAttribute("items", viewData.items());
                     model.addAttribute("total", viewData.total());

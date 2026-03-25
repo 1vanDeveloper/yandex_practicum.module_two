@@ -58,7 +58,7 @@ class ImplementedCartService implements CartService {
     @Override
     public CompletableFuture<Void> editCountItemCart(String login, long itemId, ActionDto action) {
         return CompletableFuture.supplyAsync(() ->
-                transactionTemplate.execute(_ -> {
+                transactionTemplate.execute(status-> {
                     editCountItemCartSync(login, itemId, action);
                     return null;
         }));

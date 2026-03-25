@@ -67,7 +67,7 @@ class ImplementedOrderService implements OrderService {
     @Override
     public CompletableFuture<Long> createOrder(String userLogin) {
         return CompletableFuture.supplyAsync(() ->
-                transactionTemplate.execute(_ -> {
+                transactionTemplate.execute(status -> {
                     try {
                         return createOrderSync(userLogin);
                     } catch (ValidationException e) {

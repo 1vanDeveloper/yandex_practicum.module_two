@@ -42,7 +42,7 @@ class ImplementedImageService implements ImageService {
 
     @Override
     public CompletableFuture<Image> saveImage(MultipartFile image, long itemId) {
-        return CompletableFuture.supplyAsync(() -> transactionTemplate.execute(_ -> {
+        return CompletableFuture.supplyAsync(() -> transactionTemplate.execute(status -> {
             var optImage = imageRepository.getImageByItemId(itemId);
             if (optImage.isEmpty()) {
                 var imageEntity = new Image();

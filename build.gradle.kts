@@ -6,7 +6,7 @@ plugins {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -23,8 +23,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.hibernate:hibernate-core:7.3.0.Final")
-    implementation("org.hibernate.validator:hibernate-validator")
     implementation("jakarta.validation:jakarta.validation-api")
     implementation("org.glassfish:jakarta.el:4.0.2")
     implementation("org.apache.commons:commons-lang3:3.14.0")
