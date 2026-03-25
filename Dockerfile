@@ -1,6 +1,6 @@
 # Этап 1: Сборка (Build stage)
-# Используем официальный образ Gradle с поддержкой JDK 25
-FROM gradle:jdk-25-and-25 AS builder
+# Используем официальный образ Gradle с поддержкой JDK 21
+FROM gradle:8.14-jdk21 AS builder
 
 # Устанавливаем рабочую директорию
 WORKDIR /build
@@ -13,8 +13,8 @@ COPY src /build/src
 RUN gradle bootJar --no-daemon -x test
 
 # Этап 2: Запуск (Runtime stage)
-# Используем легковесный образ JRE 25 для исполнения
-FROM bellsoft/liberica-openjre-debian:25-cds
+# Используем легковесный образ JRE 21 для исполнения
+FROM eclipse-temurin:21-jre-jammy
 
 # Устанавливаем рабочую директорию для приложения
 WORKDIR /app
