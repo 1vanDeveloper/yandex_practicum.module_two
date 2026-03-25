@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS order_items(
     price DECIMAL,
     count INT
 );
-CREATE INDEX IF NOT EXISTS order_items_order_idx ON orders(user_id);
+CREATE INDEX IF NOT EXISTS order_items_order_idx ON order_items(order_id);
 
 CREATE TABLE IF NOT EXISTS images(
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -54,4 +54,4 @@ CREATE TABLE IF NOT EXISTS images(
     file_name TEXT,
     content BYTEA
 );
-CREATE INDEX IF NOT EXISTS images_item_idx ON orders(user_id);
+CREATE INDEX IF NOT EXISTS images_item_idx ON images(item_id);
