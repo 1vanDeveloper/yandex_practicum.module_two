@@ -1,13 +1,33 @@
 version: "3.8"
 
 services:
-  postgres:
-    container_name: blog-postgres
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spring-boot-app
+    ports:
+      - "8080:8080" # Внешний порт : Внутренний порт приложения
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - JAVA_OPTS=-Xmx512m -Xms512m # Ограничение памяти для JVM
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://market-postgres:5432/market
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  market-postgres:
+    container_name: market-postgres
     image: postgres:14
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DBNAME: blog
+      POSTGRES_DBNAME: market
       PGDATA: /data/postgres
     ports:
       - "5432:5432"
