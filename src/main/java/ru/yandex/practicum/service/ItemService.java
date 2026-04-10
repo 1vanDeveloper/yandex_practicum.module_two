@@ -2,9 +2,9 @@ package ru.yandex.practicum.service;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.dto.GetItemsViewDto;
 import ru.yandex.practicum.dto.ItemDto;
 import ru.yandex.practicum.dto.PagingDto;
@@ -12,17 +12,17 @@ import ru.yandex.practicum.dto.SortDto;
 import ru.yandex.practicum.model.Item;
 import ru.yandex.practicum.repository.ItemRepository;
 
+import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.CompletableFuture;
+
 
 /**
  * Сервис по управлению товаром
  */
 public interface ItemService {
-    @Async
-    CompletableFuture<GetItemsViewDto> getItems(String search, SortDto sortOrder, Integer pageSize, Integer pageNumber);
+    Mono<GetItemsViewDto> getItems(String search, SortDto sortOrder, Integer pageSize, Integer pageNumber);
 
-    ItemDto getItemSync(long id);
+    Mono<ItemDto> getItem(long id);
 }
 
 @Service
@@ -35,37 +35,47 @@ class ImplementedItemService implements ItemService {
     }
 
     @Override
-    public CompletableFuture<GetItemsViewDto> getItems(String search, SortDto sortOrder, Integer pageSize, Integer pageNumber) {
-        return CompletableFuture.supplyAsync(() -> {
-            var sort = switch (sortOrder) {
-                case NO -> Sort.unsorted();
-                case ALPHA -> Sort.by(Sort.Direction.ASC, "title");
-                case PRICE -> Sort.by(Sort.Direction.ASC, "price");
-            };
-            var pageParams = PageRequest.of(pageNumber, pageSize, sort);
-            var page = (search == null || search.isEmpty())
-                    ? itemRepository.findAll(pageParams)
-                    : itemRepository.findByTitleContainingOrDescriptionContainingIgnoreCase(search, search, pageParams);
-            return new GetItemsViewDto(
-                    search,
-                    sortOrder,
-                    page.stream().map(ImplementedItemService::convert).toList(),
-                    new PagingDto(
-                            page.getNumber() + 1,
-                            page.getSize(),
-                            page.hasPrevious(),
-                            page.hasNext()));
-        });
+    public Mono<GetItemsViewDto> getItems(String search, SortDto sortOrder, Integer pageSize, Integer pageNumber) {
+        var sort = switch (sortOrder) {
+            case NO -> Sort.unsorted();
+            case ALPHA -> Sort.by(Sort.Direction.ASC, "title");
+            case PRICE -> Sort.by(Sort.Direction.ASC, "price");
+        };
+
+        var pageParams = PageRequest.of(pageNumber - 1, pageSize, sort);
+        boolean isSearchEmpty = (search == null || search.isBlank());
+
+        Flux<Item> itemsFlux = isSearchEmpty
+                ? itemRepository.findAllBy(pageParams)
+                : itemRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search, pageParams);
+
+        Mono<Long> countMono = isSearchEmpty
+                ? itemRepository.count()
+                : itemRepository.countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search);
+
+        return Mono.zip(itemsFlux.collectList(), countMono)
+                .map(tuple -> {
+                    List<Item> items = tuple.getT1();
+                    long totalCount = tuple.getT2();
+
+                    long totalPages = (long) Math.ceil((double) totalCount / pageSize);
+                    boolean hasNext = pageNumber < totalPages;
+                    boolean hasPrevious = pageNumber > 1;
+
+                    return new GetItemsViewDto(
+                            search,
+                            sortOrder,
+                            items.stream().map(ImplementedItemService::convert).toList(),
+                            new PagingDto(pageNumber, pageSize, hasPrevious, hasNext)
+                    );
+                });
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public ItemDto getItemSync(long id) {
-        var item = itemRepository.getItemById(id);
-        if (item == null) {
-            throw new NoSuchElementException("id: " + id);
-        }
-        return convert(item);
+    public Mono<ItemDto> getItem(long id) {
+        return itemRepository.findById(id)
+                .map(ImplementedItemService::convert)
+                .switchIfEmpty(Mono.error(new NoSuchElementException("id: " + id)));
     }
 
     private static ItemDto convert(Item item) {
