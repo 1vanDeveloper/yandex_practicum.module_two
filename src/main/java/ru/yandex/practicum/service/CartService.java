@@ -1,134 +1,119 @@
 package ru.yandex.practicum.service;
 
-import jakarta.persistence.EntityManager;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.dto.ActionDto;
 import ru.yandex.practicum.dto.GetCartViewDto;
 import ru.yandex.practicum.dto.ItemDto;
 import ru.yandex.practicum.model.Cart;
 import ru.yandex.practicum.model.CartItem;
+import ru.yandex.practicum.model.Item;
+import ru.yandex.practicum.repository.CartItemRepository;
 import ru.yandex.practicum.repository.CartRepository;
 import ru.yandex.practicum.repository.ItemRepository;
 import ru.yandex.practicum.repository.UserRepository;
 
 import java.util.Comparator;
 import java.util.NoSuchElementException;
-import java.util.concurrent.CompletableFuture;
 
 public interface CartService {
-    @Async
-    CompletableFuture<GetCartViewDto> getUserCart(String login);
+    Mono<GetCartViewDto> getUserCart(String login);
 
-    @Async
-    CompletableFuture<Void> editCountItemCart(String login, long itemId, ActionDto action);
+    Mono<Void> editCountItemCart(String login, long itemId, ActionDto action);
 }
 
 @Service
 class ImplementedCartService implements CartService {
 
     private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
-    private final EntityManager entityManager;
-    private final TransactionTemplate transactionTemplate;
 
-    ImplementedCartService(CartRepository cartRepository, ItemRepository itemRepository, UserRepository userRepository, EntityManager entityManager, TransactionTemplate transactionTemplate) {
+    ImplementedCartService(CartRepository cartRepository, CartItemRepository cartItemRepository, 
+                          ItemRepository itemRepository, UserRepository userRepository) {
         this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
-        this.entityManager = entityManager;
-        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
-    public CompletableFuture<GetCartViewDto> getUserCart(String login) {
-        return CompletableFuture.supplyAsync(() -> {
-            var cart  = getCart(login);
-            return new GetCartViewDto(
-                    cart.getCartItems()
-                            .stream()
-                            .map(ImplementedCartService::convert)
-                            .sorted(Comparator.comparing(ItemDto::title))
-                            .toList());
-        });
+    public Mono<GetCartViewDto> getUserCart(String login) {
+        return getOrCreateCart(login)
+                .flatMapMany(cart -> cartItemRepository.findByCartId(cart.getId())
+                        .flatMap(cartItem -> itemRepository.findById(cartItem.getItemId())
+                                .map(item -> convert(cartItem, item))))
+                .sort(Comparator.comparing(ItemDto::title))
+                .collectList()
+                .map(GetCartViewDto::new);
     }
 
     @Override
-    public CompletableFuture<Void> editCountItemCart(String login, long itemId, ActionDto action) {
-        return CompletableFuture.supplyAsync(() ->
-                transactionTemplate.execute(status-> {
-                    editCountItemCartSync(login, itemId, action);
-                    return null;
-        }));
+    public Mono<Void> editCountItemCart(String login, long itemId, ActionDto action) {
+        return getOrCreateCart(login)
+                .flatMap(cart -> editCountItemCartSync(cart, itemId, action).then());
     }
 
-    private void editCountItemCartSync(String login, long itemId, ActionDto action) {
-        entityManager.clear();
-        var cart = getCart(login);
-        var existsItem = cart.getCartItems()
-                .stream()
-                .filter(i -> i.getId() == itemId)
-                .findFirst();
-        CartItem cartItem;
-        if (existsItem.isPresent()) {
-            cartItem = existsItem.get();
-        } else if (action == ActionDto.PLUS) {
-            var item = itemRepository.getItemById(itemId);
-            if (item == null) {
-                throw new NoSuchElementException("id: " + itemId);
-            }
-            cartItem = new CartItem();
-            cartItem.setCart(cart);
-            cartItem.setItem(item);
-            cartItem.setCount(0);
-        } else {
-            return;
-        }
-
-        if (cartItem.getId() == null) {
-            entityManager.persist(cartItem);
-        } else {
-            cartItem = entityManager.merge(cartItem);
-        }
-
-        if (cartItem.getItem().getCount() > cartItem.getCount() && action == ActionDto.PLUS) { // если добавляем доступное число
-            cartItem.setCount(cartItem.getCount() + 1);
-        } else if (cartItem.getCount() > 1 && action == ActionDto.MINUS) { // если убираем доступное число
-            cartItem.setCount(cartItem.getCount() - 1);
-        } else if (cartItem.getItem().getCount() < cartItem.getCount()) { // если превисили лимит
-            cartItem.setCount(cartItem.getItem().getCount());
-        } else if (cartItem.getCount() == 1 && action == ActionDto.MINUS) { // если убираем последний
-            entityManager.remove(cartItem);
-        } else if (action == ActionDto.DELETE) {
-            entityManager.remove(cartItem);
-        }
+    private Mono<Boolean> editCountItemCartSync(Cart cart, long itemId, ActionDto action) {
+        return cartItemRepository.findByItemIdAndCartId(itemId, cart.getId())
+                .flatMap(cartItem -> processExistingItem(cartItem, action).thenReturn(true))
+                .switchIfEmpty(Mono.defer(() -> {
+                    if (action == ActionDto.PLUS) {
+                        return itemRepository.findById(itemId)
+                                .switchIfEmpty(Mono.error(new NoSuchElementException("id: " + itemId)))
+                                .flatMap(item -> {
+                                    var cartItem = new CartItem();
+                                    cartItem.setCartId(cart.getId());
+                                    cartItem.setItemId(item.getId());
+                                    cartItem.setCount(1);
+                                    return cartItemRepository.save(cartItem).then();
+                                });
+                    } else {
+                        return Mono.empty();
+                    }
+                }).thenReturn(true));
     }
 
-    private Cart getCart(String login) {
-        var cart = cartRepository.getCartByUserLogin(login);
-        if (cart.isPresent()) {
-            return cart.get();
-        }
-
-        var user = userRepository.getUserByLogin(login);
-        if (user.isEmpty()) {
-            throw new IllegalArgumentException(login);
-        }
-        var newCart = new Cart();
-        newCart.setUser(user.get());
-        entityManager.persist(newCart);
-        return newCart;
+    private Mono<Void> processExistingItem(CartItem cartItem, ActionDto action) {
+        return itemRepository.findById(cartItem.getItemId())
+                .flatMap(item -> {
+                    if (item.getCount() > cartItem.getCount() && action == ActionDto.PLUS) {
+                        cartItem.setCount(cartItem.getCount() + 1);
+                    } else if (cartItem.getCount() > 1 && action == ActionDto.MINUS) {
+                        cartItem.setCount(cartItem.getCount() - 1);
+                    } else if (item.getCount() < cartItem.getCount()) {
+                        cartItem.setCount(item.getCount());
+                    } else if (cartItem.getCount() == 1 && action == ActionDto.MINUS) {
+                        return cartItemRepository.delete(cartItem).then();
+                    } else if (action == ActionDto.DELETE) {
+                        return cartItemRepository.delete(cartItem).then();
+                    }
+                    return cartItemRepository.save(cartItem).then();
+                });
     }
 
-    private static ItemDto convert(CartItem cartItem) {
+    private Mono<Cart> getOrCreateCart(String login) {
+        return cartRepository.findByUserLogin(login)
+                .switchIfEmpty(
+                        userRepository.findByLogin(login)
+                                .switchIfEmpty(Mono.error(new IllegalArgumentException(login)))
+                                .flatMap(user -> {
+                                    var newCart = new Cart();
+                                    newCart.setUserId(user.getId());
+                                    return cartRepository.save(newCart);
+                                })
+                );
+    }
+
+    private static ItemDto convert(CartItem cartItem, Item item) {
         return new ItemDto(
-                cartItem.getId(),
-                cartItem.getItem().getTitle(),
-                cartItem.getItem().getDescription(),
-                "images/" + cartItem.getItem().getId(),
-                cartItem.getItem().getPrice().doubleValue(),
+                item.getId(),
+                item.getTitle(),
+                item.getDescription(),
+                "images/" + item.getId(),
+                item.getPrice().doubleValue(),
                 cartItem.getCount()
         );
     }
