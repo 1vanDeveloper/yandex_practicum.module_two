@@ -1,10 +1,11 @@
 package ru.yandex.practicum.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import org.springframework.data.repository.query.Param;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.model.User;
 
-import java.util.Optional;
-
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> getUserByLogin(String login);
+public interface UserRepository extends ReactiveCrudRepository<User, Long> {
+    Mono<User> findByLogin(String login);
 }
