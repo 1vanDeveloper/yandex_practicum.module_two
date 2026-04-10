@@ -11,9 +11,9 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - JAVA_OPTS=-Xmx512m -Xms512m # Ограничение памяти для JVM
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://market-postgres:5432/market
-      - SPRING_DATASOURCE_USERNAME=user
-      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_R2DBC_URL=r2dbc:postgresql://market-postgres:5432/market
+      - SPRING_R2DBC_USERNAME=user
+      - SPRING_R2DBC_PASSWORD=password
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
