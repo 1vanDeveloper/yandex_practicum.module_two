@@ -1,139 +1,130 @@
 package ru.yandex.practicum.service;
 
-import jakarta.persistence.EntityManager;
 import jakarta.validation.ValidationException;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.dto.GetOrdersViewDto;
 import ru.yandex.practicum.dto.OrderDto;
 import ru.yandex.practicum.dto.OrderItemDto;
-import ru.yandex.practicum.model.Cart;
-import ru.yandex.practicum.model.Order;
-import ru.yandex.practicum.model.OrderItem;
+import ru.yandex.practicum.model.*;
+import ru.yandex.practicum.repository.CartItemRepository;
 import ru.yandex.practicum.repository.CartRepository;
+import ru.yandex.practicum.repository.ItemRepository;
+import ru.yandex.practicum.repository.OrderItemRepository;
 import ru.yandex.practicum.repository.OrderRepository;
 
-import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.CompletableFuture;
 
 public interface OrderService {
-    @Async
-    CompletableFuture<GetOrdersViewDto> getUserOrders(String login);
-    @Async
-    CompletableFuture<OrderDto> getOrder(long id);
-    @Async
-    CompletableFuture<Long> createOrder(String userLogin);
+    Mono<GetOrdersViewDto> getUserOrders(String login);
+    Mono<OrderDto> getOrder(long id);
+    Mono<Long> createOrder(String userLogin);
 }
 
 @Service
 class ImplementedOrderService implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final CartRepository cartRepository;
-    private final EntityManager entityManager;
-    private final TransactionTemplate transactionTemplate;
+    private final CartItemRepository cartItemRepository;
+    private final ItemRepository itemRepository;
 
-    ImplementedOrderService(OrderRepository orderRepository, CartRepository cartRepository, EntityManager entityManager, TransactionTemplate transactionTemplate) {
+    ImplementedOrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
+                           CartRepository cartRepository, CartItemRepository cartItemRepository,
+                           ItemRepository itemRepository) {
         this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
-        this.entityManager = entityManager;
-        this.transactionTemplate = transactionTemplate;
+        this.cartItemRepository = cartItemRepository;
+        this.itemRepository = itemRepository;
     }
 
     @Override
-    public CompletableFuture<GetOrdersViewDto> getUserOrders(String login) {
-        return CompletableFuture.supplyAsync(() -> {
-            var orders = orderRepository.getOrdersByUserLogin(login);
-            return  new GetOrdersViewDto(
-                    orders.stream().map(ImplementedOrderService::convert).toList()
-            );
-        });
+    public Mono<GetOrdersViewDto> getUserOrders(String login) {
+        return orderRepository.findByUserLogin(login)
+                .flatMap(this::getOrderDto)
+                .collectList()
+                .map(GetOrdersViewDto::new);
     }
 
     @Override
-    public CompletableFuture<OrderDto> getOrder(long id) {
-        return CompletableFuture.supplyAsync(() -> {
-            var order = orderRepository.getOrderById(id);
-            if (order.isEmpty()) {
-                throw new NoSuchElementException("id: " + id);
-            }
+    public Mono<OrderDto> getOrder(long id) {
+        return orderRepository.findById(id)
+                .switchIfEmpty(Mono.error(new NoSuchElementException("id: " + id)))
+                .flatMap(this::getOrderDto);
+    }
 
-            return convert(order.get());
-        });
+    private Mono<OrderDto> getOrderDto(Order order) {
+        return orderItemRepository.findByOrderId(order.getId())
+                .map(ImplementedOrderService::convert)
+                .collectList()
+                .map(items -> new OrderDto(order.getId(), items));
     }
 
     @Override
-    public CompletableFuture<Long> createOrder(String userLogin) {
-        return CompletableFuture.supplyAsync(() ->
-                transactionTemplate.execute(status -> {
-                    try {
-                        return createOrderSync(userLogin);
-                    } catch (ValidationException e) {
-                        throw new RuntimeException(e);
+    @Transactional
+    public Mono<Long> createOrder(String userLogin) {
+        return cartRepository.findByUserLogin(userLogin)
+                .switchIfEmpty(Mono.error(new NoSuchElementException("cart is not found")))
+                .flatMap(this::createOrderSync)
+                .doOnNext(id -> System.out.println("DEBUG: Order created: " + id))
+                .doOnError(e -> System.err.println("DEBUG: ERROR in service: " + e.getMessage()));
+    }
+
+    private Mono<Long> createOrderSync(Cart cart) {
+        return cartItemRepository.findByCartId(cart.getId())
+                .collectList()
+                .switchIfEmpty(Mono.error(new NoSuchElementException("cart items is not found")))
+                .flatMap(cartItems -> {
+                    if (cartItems.isEmpty()) {
+                        return Mono.error(new ValidationException("cart is empty"));
                     }
-                }));
-    }
+                    return Flux.fromIterable(cartItems)
+                            .flatMap(cartItem -> itemRepository.findById(cartItem.getItemId())
+                                    .switchIfEmpty(Mono.error(new NoSuchElementException("Item not found: " + cartItem.getItemId())))
+                                    .map(item ->
+                                    {
+                                        if (item.getCount() < cartItem.getCount()) {
+                                            throw new ValidationException("Not enough items in stock");
+                                        }
+                                        item.setCount(item.getCount() - cartItem.getCount());
 
-    private Long createOrderSync(String userLogin) throws ValidationException {
-        var optCart = cartRepository.getCartByUserLogin(userLogin);
-        if (optCart.isEmpty()) {
-            throw new NoSuchElementException("cart is not found");
-        }
+                                        var orderItem = new OrderItem();
+                                        orderItem.setItemId(item.getId());
+                                        orderItem.setTitle(item.getTitle());
+                                        orderItem.setPrice(item.getPrice());
+                                        orderItem.setCount(cartItem.getCount());
+                                        return Pair.of(orderItem, item);
+                                    }))
+                            .collectList()
+                            .flatMap(pairs -> {
+                                var newOrder = new Order();
+                                newOrder.setUserId(cart.getUserId());
+                                return orderRepository.save(newOrder)
+                                        .flatMap(savedOrder -> {
+                                            List<OrderItem> orderItems = pairs.stream()
+                                                    .map(p -> {
+                                                        p.getFirst().setOrderId(savedOrder.getId());
+                                                        return p.getFirst();
+                                                    }).toList();
+                                            List<Item> itemsToUpdate = pairs.stream().map(Pair::getSecond).toList();
 
-        var cart = optCart.get();
-        ValidateCart(cart);
-        var newOrder = new Order();
-        newOrder.setUser(cart.getUser());
-        var orderItems = new LinkedHashSet<OrderItem>();
-        for (var cartItem : cart.getCartItems()) {
-            var orderItem = new OrderItem();
-            orderItem.setItem(cartItem.getItem());
-            orderItem.setTitle(cartItem.getItem().getTitle());
-            orderItem.setPrice(cartItem.getItem().getPrice());
-            orderItem.setCount(cartItem.getCount());
-            orderItem.setOrder(newOrder);
-            orderItems.add(orderItem);
-            entityManager.persist(orderItem);
-
-            var item = cartItem.getItem();
-            item.setCount(item.getCount() - orderItem.getCount());
-            entityManager.merge(item);
-
-            cartItem = entityManager.merge(cartItem);
-            entityManager.remove(cartItem);
-        }
-        newOrder.setOrderItems(orderItems);
-        entityManager.persist(newOrder);
-
-        cart = entityManager.merge(cart);
-        entityManager.remove(cart);
-
-        return newOrder.getId();
-    }
-
-    private static OrderDto convert(Order order) {
-        return new OrderDto(order.getId(),
-                order.getOrderItems()
-                        .stream()
-                        .map(ImplementedOrderService::convert)
-                        .toList());
+                                            return orderItemRepository.saveAll(orderItems).collectList()
+                                                    .flatMap(i1 -> itemRepository.saveAll(itemsToUpdate).collectList())
+                                                    .flatMap(i2 -> cartItemRepository.deleteAll(cartItems))
+                                                    .flatMap(i3 -> cartRepository.delete(cart))
+                                                    .thenReturn(savedOrder.getId());
+                                        });
+                            });
+                });
     }
 
     private static OrderItemDto convert(OrderItem orderItem) {
         return new OrderItemDto(orderItem.getTitle(), orderItem.getCount(), orderItem.getPrice().doubleValue());
-    }
-
-    private static void ValidateCart(Cart cart) throws ValidationException {
-        if (cart.getCartItems().isEmpty()) {
-            throw new ValidationException("cart is empty");
-        }
-
-        for (var item : cart.getCartItems()) {
-            if (item.getItem().getCount() < item.getCount()) {
-                throw new ValidationException("item " + item.getItem().getTitle() + " is " + item.getItem().getCount() + " count only");
-            }
-        }
     }
 }

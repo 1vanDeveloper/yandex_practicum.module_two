@@ -1,13 +1,14 @@
 package ru.yandex.practicum.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.model.Order;
 
-import java.util.List;
-import java.util.Optional;
+public interface OrderRepository extends ReactiveCrudRepository<Order, Long> {
+    @Query("SELECT * FROM orders o WHERE o.user_id = (SELECT u.id FROM users u WHERE u.login = :login)")
+    Flux<Order> findByUserLogin(String login);
 
-public interface OrderRepository extends JpaRepository<Order, Long> {
-    List<Order> getOrdersByUserLogin(String login);
-
-    Optional<Order> getOrderById(Long id);
+    Mono<Order> findById(Long id);
 }

@@ -1,16 +1,13 @@
 package ru.yandex.practicum.controller;
 
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.reactive.result.view.Rendering;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.service.OrderService;
-
-import java.util.concurrent.CompletableFuture;
 
 @Controller
 class OrderController {
@@ -22,31 +19,32 @@ class OrderController {
         this.orderService = orderService;
     }
 
-    @Async
     @GetMapping("/orders")
-    public CompletableFuture<String> getOrders(Model model) {
-        return orderService.getUserOrders(userLogin).thenApplyAsync(viewData -> {
-            model.addAttribute("orders", viewData.orders());
-            return "orders";
-        });
+    public Mono<Rendering> getOrders() {
+        return orderService.getUserOrders(userLogin)
+                .map(viewData -> Rendering.view("orders")
+                        .modelAttribute("orders", viewData.orders())
+                        .build());
     }
 
-    @Async
     @GetMapping("/orders/{id}")
-    public CompletableFuture<String> getOrders(Model model,
-                                                @PathVariable long id,
-                                                @RequestParam(required = false) Boolean newOrder) {
-        return orderService.getOrder(id).thenApplyAsync(viewData -> {
-            model.addAttribute("order", viewData);
-            return "order";
-        });
+    public Mono<Rendering> getOrder(
+            @PathVariable long id,
+            @RequestParam(required = false) Boolean newOrder) {
+        return orderService.getOrder(id)
+                .map(viewData -> Rendering.view("order")
+                        .modelAttribute("order", viewData)
+                        .modelAttribute("newOrder", newOrder)
+                        .build());
     }
 
-    @Async
-    @PostMapping("buy")
-    public CompletableFuture<String> buy() {
-        return orderService.createOrder(userLogin).thenApplyAsync(id -> UriComponentsBuilder.fromPath("redirect:/orders/" + id)
-                .queryParam("newOrder", true)
-                .toUriString());
+    @PostMapping("/buy")
+    public Mono<Rendering> buy() {
+        return orderService.createOrder(userLogin)
+                .map(id -> Rendering.redirectTo("/orders/" + id + "?newOrder=true").build())
+                .doOnError(e -> {
+                    System.err.println("ОШИБКА ПРИ СОЗДАНИИ ЗАКАЗА: " + e.getMessage());
+                })
+                .onErrorResume(e -> Mono.just(Rendering.view("error").build()));
     }
 }
