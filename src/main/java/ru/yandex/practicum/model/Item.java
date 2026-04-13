@@ -1,33 +1,33 @@
 package ru.yandex.practicum.model;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
 
 @Getter
 @Setter
-@Entity
 @Table(name = "items")
 public class Item {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
+    @Column("id")
     private Long id;
 
     @Size(max = 256)
-    @Column(name = "title", length = 256)
+    @Column("title")
     private String title;
 
-    @Column(name = "description", length = Integer.MAX_VALUE)
+    @Column("description")
     private String description;
 
-    @Column(name = "price")
+    @Column("price")
     private BigDecimal price;
 
-    @Column(name = "count")
+    @Column("count")
     private Integer count;
 
 }

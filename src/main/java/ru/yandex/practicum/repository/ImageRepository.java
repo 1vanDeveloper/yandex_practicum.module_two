@@ -1,10 +1,9 @@
 package ru.yandex.practicum.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.model.Image;
 
-import java.util.Optional;
-
-public interface ImageRepository extends JpaRepository<Image, Long> {
-    Optional<Image> getImageByItemId(Long id);
+public interface ImageRepository extends ReactiveCrudRepository<Image, Long> {
+    Mono<Image> findByItemId(Long id);
 }

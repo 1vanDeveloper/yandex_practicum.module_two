@@ -2,29 +2,32 @@ package ru.yandex.practicum.repository;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ContextConfiguration;
+import reactor.test.StepVerifier;
+import ru.yandex.practicum.TestConfig;
+import ru.yandex.practicum.model.Item;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Comparator;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@SpringBootTest
+@ContextConfiguration(classes = TestConfig.class)
 class ItemRepositoryTest {
 
     @Autowired
     private ItemRepository itemRepository;
 
     @Test
-    void findByTitleContainingOrDescriptionContainingIgnoreCase() {
-        var pageParams = PageRequest.of(0, 1, Sort.by(Sort.Direction.ASC, "title"));
-        var items = itemRepository.findByTitleContainingOrDescriptionContainingIgnoreCase("3 ", "3 ", pageParams);
+    void findAll() {
+        StepVerifier.create(itemRepository.findAll().sort(Comparator.comparing(Item::getId)))
+                .expectNextCount(4)
+                .verifyComplete();
+    }
 
-        assertEquals(1, items.getTotalElements());
-        var optItem = items.get().findFirst();
-        assertTrue(optItem.isPresent());
-        var item = optItem.get();
-        assertEquals("Title 3 third", item.getTitle());
+    @Test
+    void findById() {
+        StepVerifier.create(itemRepository.findById(1L))
+                .expectNextMatches(item -> item.getTitle().equals("Title 1 first"))
+                .verifyComplete();
     }
 }

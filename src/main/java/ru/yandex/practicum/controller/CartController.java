@@ -1,17 +1,14 @@
 package ru.yandex.practicum.controller;
 
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.reactive.result.view.Rendering;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.dto.ActionDto;
 import ru.yandex.practicum.dto.SortDto;
 import ru.yandex.practicum.service.CartService;
-
-import java.util.concurrent.CompletableFuture;
 
 @Controller
 class CartController {
@@ -23,9 +20,8 @@ class CartController {
         this.cartService = cartService;
     }
 
-    @Async
     @PostMapping("/items")
-    public CompletableFuture<String> editCartItemsFromItems(
+    public Mono<Rendering> editCartItemsFromItems(
             @RequestParam long id,
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "ALPHA") SortDto sort,
@@ -33,36 +29,28 @@ class CartController {
             @RequestParam(required = false, defaultValue = "1") Integer pageNumber,
             @RequestParam ActionDto action) {
 
-        return cartService.editCountItemCart(userLogin, id, action).thenApplyAsync(v -> UriComponentsBuilder.fromPath("redirect:/items")
-                .queryParam("search", search)
-                .queryParam("sort", sort)
-                .queryParam("pageNumber", pageNumber)
-                .queryParam("pageSize", pageSize)
-                .toUriString());
+        return cartService.editCountItemCart(userLogin, id, action)
+                .thenReturn(Rendering.redirectTo("/items?search=" + search + "&sort=" + sort + "&pageNumber=" + pageNumber + "&pageSize=" + pageSize).build());
     }
 
-    @Async
     @GetMapping("/cart/items")
-    public CompletableFuture<String> getCart(Model model) {
-        return cartService.getUserCart(userLogin).thenApplyAsync(viewData -> {
-            model.addAttribute("items", viewData.items());
-            model.addAttribute("total", viewData.total());
-            return "cart";
-        });
+    public Mono<Rendering> getCart() {
+        return cartService.getUserCart(userLogin)
+                .map(viewData -> Rendering.view("cart")
+                        .modelAttribute("items", viewData.items())
+                        .modelAttribute("total", viewData.total())
+                        .build());
     }
 
-    @Async
     @PostMapping("/cart/items")
-    public CompletableFuture<String> editCartItemsFromCart(
-            Model model,
+    public Mono<Rendering> editCartItemsFromCart(
             @RequestParam long id,
             @RequestParam ActionDto action) {
         return cartService.editCountItemCart(userLogin, id, action)
-                .thenComposeAsync(v -> cartService.getUserCart(userLogin))
-                .thenApplyAsync(viewData -> {
-                    model.addAttribute("items", viewData.items());
-                    model.addAttribute("total", viewData.total());
-                    return "cart";
-                });
+                .then(cartService.getUserCart(userLogin))
+                .map(viewData -> Rendering.view("cart")
+                        .modelAttribute("items", viewData.items())
+                        .modelAttribute("total", viewData.total())
+                        .build());
     }
 }

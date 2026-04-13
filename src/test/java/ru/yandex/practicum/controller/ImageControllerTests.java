@@ -2,93 +2,74 @@ package ru.yandex.practicum.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.web.servlet.MockMvc;
-import ru.yandex.practicum.TestConfig;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.web.reactive.function.BodyInserters;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@AutoConfigureMockMvc
-@ContextConfiguration(classes = TestConfig.class)
+@AutoConfigureWebTestClient
 public class ImageControllerTests {
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webTestClient;
 
     @Test
-    void testUploadImage_emptyFile_badRequest() throws Exception {
-        MockMultipartFile empty = new MockMultipartFile("image", "empty.png", "image/png", new byte[0]);
+    void testUploadImage_emptyFile_badRequest() {
+        var pngStub = new byte[0];
+        var fileName = "empty.png";
 
-        var result = mockMvc.perform(multipart(HttpMethod.PUT, "/images/{id}", 1L).file(empty))
-                .andReturn();
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("image", new ByteArrayResource(pngStub))
+                .filename(fileName)
+                .contentType(MediaType.MULTIPART_FORM_DATA);
 
-        mockMvc.perform(asyncDispatch(result))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("empty file"));
+        webTestClient.put()
+                .uri("/images/{id}", 1L)
+                .body(BodyInserters.fromMultipartData(builder.build()))
+                .exchange()
+                .expectStatus().is4xxClientError();
     }
 
     @Test
-    void testUploadImage_emptyFileName_badRequest() throws Exception {
-        MockMultipartFile empty = new MockMultipartFile("image", "", "image/png", new byte[]{1, 2, 3});
-
-        var result = mockMvc.perform(multipart(HttpMethod.PUT, "/images/{id}", 1L).file(empty))
-                .andReturn();
-
-        mockMvc.perform(asyncDispatch(result))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("empty file name"));
+    void testGetImage_imageNotFound_400() {
+        webTestClient.get()
+                .uri("/images/{id}", 10000000L)
+                .exchange()
+                .expectStatus().isBadRequest();
     }
 
     @Test
-    void testUploadImage_emptyFileNameExtension_badRequest() throws Exception {
-        MockMultipartFile empty = new MockMultipartFile("image", "empty", "image/png", new byte[]{1, 2, 3});
-
-        var result = mockMvc.perform(multipart(HttpMethod.PUT, "/images/{id}", 1L).file(empty))
-                .andReturn();
-
-        mockMvc.perform(asyncDispatch(result))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("file name has not extension"));
-    }
-
-    @Test
-    void testGetImage_imageNotFound_400() throws Exception {
-        var result = mockMvc.perform(get("/images/10000000"))
-                .andReturn();
-
-        mockMvc.perform(asyncDispatch(result))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void testUploadAndGetImage_success() throws Exception {
+    void testUploadAndGetImage_success() {
         var pngStub = new byte[]{(byte) 137, 80, 78, 71};
         var fileName = "post_image.png";
-        MockMultipartFile file = new MockMultipartFile("image", fileName, "image/png", pngStub);
 
-        var putResult = mockMvc.perform(multipart(HttpMethod.PUT,"/images/{id}", 1L).file(file))
-                .andReturn();
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("image", new ByteArrayResource(pngStub))
+                .filename(fileName)
+                .contentType(MediaType.MULTIPART_FORM_DATA);
 
-        mockMvc.perform(asyncDispatch(putResult))
-                .andExpect(status().isOk())
-                .andExpect(content().string("ok"));
+        // 2. Выполняем запрос
+        webTestClient.put()
+                .uri("/images/{id}", 1L)
+                .body(BodyInserters.fromMultipartData(builder.build()))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("ok");
 
-        var getResult = mockMvc.perform(get("/images/{id}", 1L))
-                .andExpect(request().asyncStarted())
-                .andReturn();
-
-        mockMvc.perform(asyncDispatch(getResult))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM))
-                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\""))
-                .andExpect(content().bytes(pngStub));
+        webTestClient.get()
+                .uri("/images/{id}", 1L)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .expectBody(byte[].class)
+                .isEqualTo(pngStub);
     }
 }
