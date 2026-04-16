@@ -21,6 +21,23 @@ services:
       timeout: 10s
       retries: 3
 
+  payments:
+    build:
+      context: .
+      dockerfile: Dockerfile.Payments
+    container_name: spring-boot-payments
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - JAVA_OPTS=-Xmx512m -Xms512m
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   market-postgres:
     container_name: market-postgres
     image: postgres:14
