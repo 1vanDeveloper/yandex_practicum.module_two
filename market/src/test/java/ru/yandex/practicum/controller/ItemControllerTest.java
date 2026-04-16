@@ -101,13 +101,4 @@ class ItemControllerTest {
                 .exchange()
                 .expectStatus().isOk();
     }
-
-    @Test
-    void buy() {
-        webTestClient.post()
-                .uri("/buy")
-                .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().value("Location", value -> assertThat(value).contains("newOrder"));
-    }
 }

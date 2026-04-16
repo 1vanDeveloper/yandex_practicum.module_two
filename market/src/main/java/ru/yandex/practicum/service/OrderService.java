@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.yandex.practicum.client.api.PaymentsApi;
+import ru.yandex.practicum.client.model.CreatePaymentRequest;
 import ru.yandex.practicum.dto.GetOrdersViewDto;
 import ru.yandex.practicum.dto.OrderDto;
 import ru.yandex.practicum.dto.OrderItemDto;
@@ -16,6 +18,7 @@ import ru.yandex.practicum.repository.ItemRepository;
 import ru.yandex.practicum.repository.OrderItemRepository;
 import ru.yandex.practicum.repository.OrderRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -33,15 +36,17 @@ class ImplementedOrderService implements OrderService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ItemRepository itemRepository;
+    private final PaymentsApi paymentsApi;
 
     ImplementedOrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
                            CartRepository cartRepository, CartItemRepository cartItemRepository,
-                           ItemRepository itemRepository) {
+                           ItemRepository itemRepository, PaymentsApi paymentsApi) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.itemRepository = itemRepository;
+        this.paymentsApi = paymentsApi;
     }
 
     @Override
@@ -114,10 +119,20 @@ class ImplementedOrderService implements OrderService {
                                                     }).toList();
                                             List<Item> itemsToUpdate = pairs.stream().map(Pair::getSecond).toList();
 
+                                            BigDecimal totalAmount = pairs.stream()
+                                                    .map(p -> p.getFirst().getPrice().multiply(BigDecimal.valueOf(p.getFirst().getCount())))
+                                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                                            CreatePaymentRequest paymentRequest = new CreatePaymentRequest()
+                                                    .orderId(String.valueOf(savedOrder.getId()))
+                                                    .amount(totalAmount)
+                                                    .currency("RUB");
+
                                             return orderItemRepository.saveAll(orderItems).collectList()
                                                     .flatMap(i1 -> itemRepository.saveAll(itemsToUpdate).collectList())
                                                     .flatMap(i2 -> cartItemRepository.deleteAll(cartItems))
                                                     .flatMap(i3 -> cartRepository.delete(cart))
+                                                    .flatMap(i4 -> paymentsApi.createPayment(paymentRequest))
                                                     .thenReturn(savedOrder.getId());
                                         });
                             });

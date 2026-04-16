@@ -34,6 +34,30 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.named("generateOpenApiDocs") {
+    mustRunAfter("compileJava")
+    mustRunAfter("processResources")
+    mustRunAfter("classes")
+}
+
+tasks.named("bootJar") {
+    mustRunAfter("generateOpenApiDocs")
+}
+
+tasks.named("jar") {
+    mustRunAfter("generateOpenApiDocs")
+}
+
+tasks.named("forkedSpringBootRun") {
+    mustRunAfter("compileJava")
+    mustRunAfter("processResources")
+    mustRunAfter("classes")
+    mustRunAfter("compileTestJava")
+    mustRunAfter("processTestResources")
+    mustRunAfter("testClasses")
+    mustRunAfter("test")
+}
+
 openApi {
     apiDocsUrl.set("http://localhost:8081/v3/api-docs")
     outputDir.set(file("${project.projectDir}/build"))
