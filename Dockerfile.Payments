@@ -20,10 +20,10 @@ FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 # Копируем только скомпилированный JAR-файл из этапа сборки
-COPY --from=builder /build/payments/build/libs/*.jar application.jar
+COPY --from=builder /build/payments/build/libs/payments-1.0-SNAPSHOT.jar application.jar
 
 # Spring Boot 4 по умолчанию работает на порту 8080
-EXPOSE 8080
+EXPOSE 8081
 
 # Запуск приложения
 ENTRYPOINT ["java", "-jar", "application.jar"]

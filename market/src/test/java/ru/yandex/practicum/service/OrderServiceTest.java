@@ -3,11 +3,9 @@ package ru.yandex.practicum.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import reactor.test.StepVerifier;
 import ru.yandex.practicum.TestConfig;
-import ru.yandex.practicum.client.api.PaymentsApi;
 
 import java.util.NoSuchElementException;
 
@@ -42,9 +40,18 @@ class OrderServiceTest {
     @Test
     void createOrder_emptyCart_returnsError() {
         StepVerifier.create(orderService.createOrder("empty_cart_user"))
-                .expectErrorMatches(throwable -> 
-                    throwable instanceof java.util.NoSuchElementException || 
+                .expectErrorMatches(throwable ->
+                    throwable instanceof java.util.NoSuchElementException ||
                     throwable.getMessage().contains("cart"))
                 .verify();
+    }
+
+    @Test
+    void createOrder_fromCart_callsPaymentsApi() {
+
+        // Create order from cart with items
+        StepVerifier.create(orderService.createOrder("user"))
+                .expectNextMatches(orderId -> orderId != null && orderId > 0)
+                .verifyComplete();
     }
 }

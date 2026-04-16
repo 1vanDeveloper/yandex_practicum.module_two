@@ -129,10 +129,10 @@ class ImplementedOrderService implements OrderService {
                                                     .currency("RUB");
 
                                             return orderItemRepository.saveAll(orderItems).collectList()
-                                                    .flatMap(i1 -> itemRepository.saveAll(itemsToUpdate).collectList())
-                                                    .flatMap(i2 -> cartItemRepository.deleteAll(cartItems))
-                                                    .flatMap(i3 -> cartRepository.delete(cart))
-                                                    .flatMap(i4 -> paymentsApi.createPayment(paymentRequest))
+                                                    .flatMap(i -> itemRepository.saveAll(itemsToUpdate).collectList())
+                                                    .flatMap(i -> paymentsApi.createPayment(paymentRequest))
+                                                    .flatMap(i -> cartItemRepository.deleteAll(cartItems))
+                                                    .then(Mono.defer(() -> cartRepository.delete(cart)))
                                                     .thenReturn(savedOrder.getId());
                                         });
                             });

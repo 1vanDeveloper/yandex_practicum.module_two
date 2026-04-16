@@ -3,6 +3,7 @@ rootProject.name = "market"
 pluginManagement {
     repositories {
         mavenCentral()
+        gradlePluginPortal()
     }
 }
 
