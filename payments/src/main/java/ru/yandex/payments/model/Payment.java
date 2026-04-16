@@ -1,16 +1,25 @@
 package ru.yandex.payments.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@Schema(description = "Информация о платеже")
 public class Payment {
 
+    @Schema(description = "Идентификатор платежа", example = "payment-123")
     private String id;
+    @Schema(description = "Идентификатор заказа", example = "order-456", requiredMode = Schema.RequiredMode.REQUIRED)
     private String orderId;
+    @Schema(description = "Сумма платежа", example = "100.00", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal amount;
+    @Schema(description = "Валюта платежа (ISO 4217)", example = "USD", requiredMode = Schema.RequiredMode.REQUIRED)
     private String currency;
+    @Schema(description = "Статус платежа", example = "PENDING", requiredMode = Schema.RequiredMode.REQUIRED)
     private PaymentStatus status;
+    @Schema(description = "Дата и время создания платежа")
     private Instant createdAt;
+    @Schema(description = "Дата и время последнего обновления")
     private Instant updatedAt;
 
     public Payment() {
