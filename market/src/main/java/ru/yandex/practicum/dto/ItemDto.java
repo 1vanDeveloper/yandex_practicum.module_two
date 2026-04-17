@@ -1,5 +1,7 @@
 package ru.yandex.practicum.dto;
 
+import java.io.Serializable;
+
 public record ItemDto(
         long id,
         String title,
@@ -7,4 +9,4 @@ public record ItemDto(
         String imgPath,
         double price,
         int count
-) {}
+) implements Serializable {}

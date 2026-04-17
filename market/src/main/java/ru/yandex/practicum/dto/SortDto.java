@@ -1,6 +1,8 @@
 package ru.yandex.practicum.dto;
 
-public enum SortDto {
+import java.io.Serializable;
+
+public enum SortDto implements Serializable {
     NO,
     ALPHA,
     PRICE

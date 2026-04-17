@@ -1,5 +1,6 @@
 package ru.yandex.practicum.service;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ class ImplementedItemService implements ItemService {
     }
 
     @Override
+    @Cacheable(value = {"items-list"}, key = "#search + ':' + #sortOrder + ':' + #pageSize + ':' + #pageNumber")
     public Mono<GetItemsViewDto> getItems(String search, SortDto sortOrder, Integer pageSize, Integer pageNumber) {
         var sort = switch (sortOrder) {
             case NO -> Sort.unsorted();
@@ -72,6 +74,7 @@ class ImplementedItemService implements ItemService {
     }
 
     @Override
+    @Cacheable(value = {"items"}, key = "#id")
     public Mono<ItemDto> getItem(long id) {
         return itemRepository.findById(id)
                 .map(ImplementedItemService::convert)

@@ -1,6 +1,8 @@
 package ru.yandex.practicum.service;
 
 import jakarta.validation.ValidationException;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +52,7 @@ class ImplementedOrderService implements OrderService {
     }
 
     @Override
+    @Cacheable(value = {"orders"}, key = "#login")
     public Mono<GetOrdersViewDto> getUserOrders(String login) {
         return orderRepository.findByUserLogin(login)
                 .flatMap(this::getOrderDto)
@@ -58,6 +61,7 @@ class ImplementedOrderService implements OrderService {
     }
 
     @Override
+    @Cacheable(value = {"orders"}, key = "#id")
     public Mono<OrderDto> getOrder(long id) {
         return orderRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NoSuchElementException("id: " + id)))
@@ -73,6 +77,7 @@ class ImplementedOrderService implements OrderService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"items", "items-list", "orders"}, allEntries = true)
     public Mono<Long> createOrder(String userLogin) {
         return cartRepository.findByUserLogin(userLogin)
                 .switchIfEmpty(Mono.error(new NoSuchElementException("cart is not found")))
