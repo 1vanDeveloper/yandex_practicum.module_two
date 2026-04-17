@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.Market
     container_name: spring-boot-app
     ports:
       - "8080:8080" # Внешний порт : Внутренний порт приложения
@@ -17,6 +17,23 @@ services:
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  payments:
+    build:
+      context: .
+      dockerfile: Dockerfile.Payments
+    container_name: spring-boot-payments
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - JAVA_OPTS=-Xmx512m -Xms512m
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -34,6 +51,18 @@ services:
     volumes:
       - ./scripts/schema.sql:/docker-entrypoint-initdb.d/1-init.sql:ro
       - ./scripts/data.sql:/docker-entrypoint-initdb.d/2-data.sql:ro
+
+  redis:
+    image: redis:7-alpine
+    container_name: market-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   cache:
