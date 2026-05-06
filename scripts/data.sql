@@ -1,6 +1,9 @@
 \c market
 
-INSERT INTO users (login) VALUES ('user');
+INSERT INTO users (login, password)
+VALUES
+    ('user1', '$2a$10$IlsY2MncOm8ZgHSx6CU3CugGxzRmH2FzBfBoXsupXc8QPm8eKkegq'),
+    ('user', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi');
 
 INSERT INTO items (title, description, count, price)
 VALUES

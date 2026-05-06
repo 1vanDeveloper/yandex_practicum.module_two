@@ -16,7 +16,11 @@
                     <h2>
                         <span class="badge text-bg-success">Витрина магазина</span>
                     </h2>
-                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4 ms-auto"> Корзина</a>
+                    <span class="ms-auto text-muted" th:if="${#authentication}" th:text="${#authentication.name}"></span>
+                    <form th:action="@{/logout}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-danger bi bi-box-arrow-right" style="border: 1px solid #dc3545; color: #dc3545;"> Выйти</button>
+                    </form>
+                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
                     <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
                 </div>
             </div>

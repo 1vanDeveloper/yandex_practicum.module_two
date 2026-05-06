@@ -4,6 +4,10 @@ plugins {
 
 allprojects {
     repositories {
+        maven {
+            url = uri("https://artifactory.tcsbank.ru/artifactory/maven-all")
+            name = "maven-all"
+        }
         mavenCentral()
     }
 }

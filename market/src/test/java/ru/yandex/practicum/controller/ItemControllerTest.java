@@ -6,6 +6,9 @@ import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWeb
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import ru.yandex.practicum.WithMockSecurityUser;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,6 +20,7 @@ class ItemControllerTest {
     private WebTestClient webTestClient;
 
     @Test
+    @WithMockSecurityUser(username = "user")
     void getItems_request_without_params() {
         webTestClient.get()
                 .uri("/")
@@ -31,6 +35,7 @@ class ItemControllerTest {
     }
 
     @Test
+    @WithMockSecurityUser(username = "user")
     void getItems_request_with_params() {
         webTestClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -45,20 +50,27 @@ class ItemControllerTest {
     }
 
     @Test
+    @WithMockSecurityUser(username = "user")
     void editCartItemsFromItems() {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("id", "1");
+        formData.add("action", "PLUS");
+        formData.add("search", "");
+        formData.add("sort", "ALPHA");
+        formData.add("pageSize", "10");
+        formData.add("pageNumber", "1");
+
         webTestClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/items")
-                        .queryParam("id", "1")
-                        .queryParam("action", "PLUS")
-                        .queryParam("pageNumber", "1")
-                        .build())
+                .uri("/items")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .bodyValue(formData)
                 .exchange()
                 .expectStatus().is3xxRedirection()
                 .expectHeader().value("Location", value -> assertThat(value).startsWith("/items"));
     }
 
     @Test
+    @WithMockSecurityUser(username = "user")
     void getItem() {
         webTestClient.get()
                 .uri("/items/{id}", 1L)
@@ -67,6 +79,7 @@ class ItemControllerTest {
     }
 
     @Test
+    @WithMockSecurityUser(username = "user")
     void getCart() {
         webTestClient.get()
                 .uri("/cart/items")
@@ -75,18 +88,22 @@ class ItemControllerTest {
     }
 
     @Test
+    @WithMockSecurityUser()
     void editCartItemsFromCart() {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("id", "1");
+        formData.add("action", "PLUS");
+
         webTestClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/cart/items")
-                        .queryParam("id", "1")
-                        .queryParam("action", "PLUS")
-                        .build())
+                .uri("/cart/items")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .bodyValue(formData)
                 .exchange()
                 .expectStatus().isOk();
     }
 
     @Test
+    @WithMockSecurityUser()
     void getOrders() {
         webTestClient.get()
                 .uri("/orders")
@@ -95,6 +112,7 @@ class ItemControllerTest {
     }
 
     @Test
+    @WithMockSecurityUser()
     void testGetOrders() {
         webTestClient.get()
                 .uri("/orders/{id}", 1L)

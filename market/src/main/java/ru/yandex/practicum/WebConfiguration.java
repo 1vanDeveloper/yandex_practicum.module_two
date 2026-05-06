@@ -13,11 +13,10 @@ import ru.yandex.practicum.client.api.PaymentsApi;
 @PropertySource("classpath:application.properties")
 public class WebConfiguration {
 
-    @Value("${payments.api.base-url}")
-    private String paymentsApiBaseUrl;
-
     @Bean
-    public PaymentsApi paymentsApi() {
+    public PaymentsApi paymentsApi(
+            @Value("${payments.api.base-url}") String paymentsApiBaseUrl
+    ) {
         ApiClient defaultClient = new ApiClient();
         defaultClient.setBasePath(paymentsApiBaseUrl);
 
