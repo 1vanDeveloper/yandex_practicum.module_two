@@ -46,31 +46,44 @@ public class SecurityConfig {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
+                        // Public resources - accessible to anonymous users
+                        .pathMatchers(HttpMethod.GET, "/").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/items").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/items/{id}").permitAll()
                         .pathMatchers(HttpMethod.GET, "/images/**").permitAll()
+                        // Authentication endpoints
                         .pathMatchers("/login", "/registration", "/logout", "/error").permitAll()
+                        // All other endpoints require authentication
                         .anyExchange().authenticated()
+                )
+                .exceptionHandling(spec -> spec
+                        .accessDeniedHandler((webExchange, accessDeniedException) -> {
+                            webExchange.getResponse().getHeaders().set("Location", "/login?accessDenied");
+                            webExchange.getResponse().setStatusCode(HttpStatus.FOUND);
+                            return webExchange.getResponse().setComplete();
+                        })
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .authenticationSuccessHandler((exchange, authentication) -> {
-                            exchange.getExchange().getResponse().getHeaders().set("Location", "/items");
-                            exchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
-                            return exchange.getExchange().getResponse().setComplete();
+                        .authenticationSuccessHandler((webFilterExchange, authentication) -> {
+                            webFilterExchange.getExchange().getResponse().getHeaders().set("Location", "/items");
+                            webFilterExchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
+                            return webFilterExchange.getExchange().getResponse().setComplete();
                         })
-                        .authenticationFailureHandler((exchange, exception) -> {
-                            exchange.getExchange().getResponse().getHeaders().set("Location", "/login?error");
-                            exchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
-                            return exchange.getExchange().getResponse().setComplete();
+                        .authenticationFailureHandler((webFilterExchange, exception) -> {
+                            webFilterExchange.getExchange().getResponse().getHeaders().set("Location", "/login?error");
+                            webFilterExchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
+                            return webFilterExchange.getExchange().getResponse().setComplete();
                         })
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessHandler((exchange, authentication) -> 
-                            securityContextRepository.save(exchange.getExchange(), null)
+                        .logoutSuccessHandler((webFilterExchange, authentication) ->
+                            securityContextRepository.save(webFilterExchange.getExchange(), null)
                                     .then(Mono.fromRunnable(() -> {
-                                        exchange.getExchange().getResponse().getHeaders().set("Location", "/login?logout");
-                                        exchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
-                                        exchange.getExchange().getResponse().setComplete();
+                                        webFilterExchange.getExchange().getResponse().getHeaders().set("Location", "/login?logout");
+                                        webFilterExchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
+                                        webFilterExchange.getExchange().getResponse().setComplete();
                                     }))
                         )
                 )

@@ -30,6 +30,11 @@ class CartController {
             @ModelAttribute ItemsActionForm form,
             @AuthenticationPrincipal SecurityUser currentUser) {
 
+        if (currentUser == null) {
+            log.info("POST /items - anonymous user, redirecting to login");
+            return Mono.just(Rendering.redirectTo("/login?accessDenied").build());
+        }
+
         log.info("POST /items - user={}, form={}", currentUser.getUsername(), form);
 
         return cartService.editCountItemCart(currentUser.getUsername(), form.id(), form.action())
@@ -47,6 +52,11 @@ class CartController {
             @PathVariable long id,
             @ModelAttribute CartActionForm form,
             @AuthenticationPrincipal SecurityUser currentUser) {
+
+        if (currentUser == null) {
+            log.info("POST /items/{} - anonymous user, redirecting to login", id);
+            return Mono.just(Rendering.redirectTo("/login?accessDenied").build());
+        }
 
         log.info("POST /items/{} - user={}, form={}", id, currentUser.getUsername(), form);
 

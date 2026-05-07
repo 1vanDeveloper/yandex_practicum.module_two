@@ -1,5 +1,6 @@
 package ru.yandex.practicum.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +12,7 @@ import reactor.core.publisher.Mono;
 import ru.yandex.practicum.security.SecurityUser;
 import ru.yandex.practicum.service.OrderService;
 
+@Slf4j
 @Controller
 class OrderController {
 
@@ -41,10 +43,15 @@ class OrderController {
 
     @PostMapping("/buy")
     public Mono<Rendering> buy(@AuthenticationPrincipal SecurityUser currentUser) {
+        if (currentUser == null) {
+            log.info("POST /buy - anonymous user, redirecting to login");
+            return Mono.just(Rendering.redirectTo("/login?accessDenied").build());
+        }
+
         return orderService.createOrder(currentUser.getUsername())
                 .map(id -> Rendering.redirectTo("/orders/" + id + "?newOrder=true").build())
                 .doOnError(e -> {
-                    System.err.println("ОШИБКА ПРИ СОЗДАНИИ ЗАКАЗА: " + e.getMessage());
+                    log.error("ОШИБКА ПРИ СОЗДАНИИ ЗАКАЗА: {}", e.getMessage());
                 })
                 .onErrorResume(e -> Mono.just(Rendering.view("error").build()));
     }

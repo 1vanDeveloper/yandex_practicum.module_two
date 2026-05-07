@@ -22,12 +22,13 @@
                     <span class="badge text-bg-success">Витрина магазина</span>
                 </h2>
                 <span class="ms-auto text-muted" th:if="${#authentication}" th:text="${#authentication.name}"></span>
-                <form th:action="@{/logout}" method="post" style="display: inline;">
+                <a th:if="${#authentication}" href="/orders" class="btn btn-secondary bi bi-file-earmark-text"> Заказы</a>
+                <a th:if="${#authentication}" href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
+                <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
+                <a th:unless="${#authentication}" href="/login" class="btn btn-outline-primary ms-auto"> Войти</a>
+                <form th:if="${#authentication}" th:action="@{/logout}" method="post" style="display: inline;">
                     <button type="submit" class="btn btn-outline-danger bi bi-box-arrow-right" style="border: 1px solid #dc3545; color: #dc3545;"> Выйти</button>
                 </form>
-                <a href="/orders" class="btn btn-secondary bi bi-file-earmark-text"> Заказы</a>
-                <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
-                <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
             </div>
         </div>
     </div>

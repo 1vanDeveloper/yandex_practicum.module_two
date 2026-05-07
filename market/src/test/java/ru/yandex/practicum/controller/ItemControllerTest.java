@@ -88,7 +88,7 @@ class ItemControllerTest {
     }
 
     @Test
-    @WithMockSecurityUser()
+    @WithMockSecurityUser(username = "user")
     void editCartItemsFromCart() {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("id", "1");
@@ -103,7 +103,7 @@ class ItemControllerTest {
     }
 
     @Test
-    @WithMockSecurityUser()
+    @WithMockSecurityUser(username = "user")
     void getOrders() {
         webTestClient.get()
                 .uri("/orders")
@@ -112,7 +112,7 @@ class ItemControllerTest {
     }
 
     @Test
-    @WithMockSecurityUser()
+    @WithMockSecurityUser(username = "user")
     void testGetOrders() {
         webTestClient.get()
                 .uri("/orders/{id}", 1L)
