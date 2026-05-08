@@ -5,7 +5,8 @@
       "Bash(docker logs *)",
       "Bash(docker exec *)",
       "Bash(./gradlew *)",
-      "Bash(docker ps)"
+      "Bash(docker ps)",
+      "Bash(find *)"
     ]
   },
   "$version": 3

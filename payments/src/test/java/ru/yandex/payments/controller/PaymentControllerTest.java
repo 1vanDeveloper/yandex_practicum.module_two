@@ -6,10 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.yandex.payments.config.TestSecurityConfig;
 import ru.yandex.payments.model.CreatePaymentRequest;
 import ru.yandex.payments.model.Payment;
 import ru.yandex.payments.model.PaymentStatus;
@@ -23,6 +27,8 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @AutoConfigureWebTestClient
+@ActiveProfiles("test")
+@Import(TestSecurityConfig.class)
 class PaymentControllerTest {
 
     @Autowired
@@ -54,6 +60,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void createPayment_validRequest_returnsCreatedPayment() {
         when(paymentService.createPayment(any(CreatePaymentRequest.class)))
                 .thenReturn(Mono.just(testPayment));
@@ -74,6 +81,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void createPayment_invalidRequest_missingOrderId_returnsBadRequest() {
         CreatePaymentRequest invalidRequest = new CreatePaymentRequest(
                 null,
@@ -90,6 +98,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void createPayment_invalidRequest_negativeAmount_returnsBadRequest() {
         CreatePaymentRequest invalidRequest = new CreatePaymentRequest(
                 "order-123",
@@ -106,6 +115,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void createPayment_invalidRequest_zeroAmount_returnsBadRequest() {
         CreatePaymentRequest invalidRequest = new CreatePaymentRequest(
                 "order-123",
@@ -122,6 +132,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void createPayment_invalidRequest_missingCurrency_returnsBadRequest() {
         CreatePaymentRequest invalidRequest = new CreatePaymentRequest(
                 "order-123",
@@ -138,6 +149,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void getPaymentById_existingId_returnsPayment() {
         when(paymentService.getPaymentById("payment-1"))
                 .thenReturn(Mono.just(testPayment));
@@ -155,6 +167,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void getPaymentById_nonExistingId_returnsNotFound() {
         when(paymentService.getPaymentById("non-existing"))
                 .thenReturn(Mono.empty());
@@ -166,6 +179,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void getAllPayments_returnsFluxOfPayments() {
         Payment payment2 = new Payment(
                 "payment-2",
@@ -191,6 +205,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void getAllPayments_emptyList_returnsEmptyFlux() {
         when(paymentService.getAllPayments())
                 .thenReturn(Flux.empty());
@@ -204,6 +219,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void getPaymentsByOrderId_existingOrderId_returnsPayments() {
         Payment payment2 = new Payment(
                 "payment-2",
@@ -226,6 +242,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void getPaymentsByOrderId_nonExistingOrderId_returnsEmptyFlux() {
         when(paymentService.getPaymentsByOrderId("non-existing-order"))
                 .thenReturn(Flux.empty());
@@ -239,6 +256,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void processPayment_existingPendingPayment_returnsProcessedPayment() {
         Payment processedPayment = new Payment(
                 "payment-1",
@@ -262,6 +280,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void processPayment_nonExistingPayment_returnsNotFound() {
         when(paymentService.processPayment("non-existing"))
                 .thenReturn(Mono.empty());
@@ -274,6 +293,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void processPayment_invalidState_returnsBadRequest() {
         when(paymentService.processPayment("payment-1"))
                 .thenReturn(Mono.error(new IllegalStateException("Payment cannot be processed: COMPLETED")));
@@ -285,6 +305,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void cancelPayment_existingPayment_returnsCancelledPayment() {
         Payment cancelledPayment = new Payment(
                 "payment-1",
@@ -308,6 +329,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void cancelPayment_nonExistingPayment_returnsNotFound() {
         when(paymentService.cancelPayment("non-existing"))
                 .thenReturn(Mono.empty());
@@ -320,6 +342,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void cancelPayment_invalidState_returnsBadRequest() {
         when(paymentService.cancelPayment("payment-1"))
                 .thenReturn(Mono.error(new IllegalStateException("Cannot cancel completed payment")));
@@ -331,6 +354,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void refundPayment_existingCompletedPayment_returnsRefundedPayment() {
         Payment refundedPayment = new Payment(
                 "payment-1",
@@ -354,6 +378,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void refundPayment_nonExistingPayment_returnsNotFound() {
         when(paymentService.refundPayment("non-existing"))
                 .thenReturn(Mono.empty());
@@ -366,6 +391,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser
     void refundPayment_invalidState_returnsBadRequest() {
         when(paymentService.refundPayment("payment-1"))
                 .thenReturn(Mono.error(new IllegalStateException("Can only refund completed payments")));
