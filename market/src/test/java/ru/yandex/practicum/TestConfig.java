@@ -2,16 +2,22 @@ package ru.yandex.practicum;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import ru.yandex.practicum.config.SecurityConfig;
+import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
 import ru.yandex.practicum.security.SecurityUser;
 
+import static org.mockito.Mockito.mock;
+
 @TestConfiguration
-@Import({WebConfiguration.class, SecurityConfig.class})
 public class TestConfig {
+
+    @Bean
+    @Primary
+    public ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter() {
+        return mock(ServerOAuth2AuthorizedClientExchangeFilterFunction.class);
+    }
 
     @Bean
     @Primary
