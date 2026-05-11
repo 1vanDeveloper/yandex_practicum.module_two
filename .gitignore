@@ -69,3 +69,6 @@ hs_err_pid*
 replay_pid*
 
 .nessy/
+
+# Environment variables
+.env
