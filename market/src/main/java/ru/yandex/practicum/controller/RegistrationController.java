@@ -1,5 +1,6 @@
 package ru.yandex.practicum.controller;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -23,12 +24,12 @@ public class RegistrationController {
     private final PasswordEncoder passwordEncoder;
 
     @GetMapping("/registration")
-    public String registrationPage(@ModelAttribute("registrationForm") RegistrationForm form) {
+    public String registrationPage(@Valid @ModelAttribute("registrationForm") RegistrationForm form) {
         return "registration";
     }
 
     @PostMapping("/registration")
-    public Mono<String> register(@ModelAttribute("registrationForm") RegistrationForm form,
+    public Mono<String> register(@Valid @ModelAttribute("registrationForm") RegistrationForm form,
                                   BindingResult bindingResult,
                                   Model model) {
         if (bindingResult.hasErrors()) {

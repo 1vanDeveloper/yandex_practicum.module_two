@@ -1,9 +1,11 @@
 package ru.yandex.practicum.dto;
 
+import jakarta.validation.constraints.Min;
+
 import java.io.Serializable;
 
 public record ItemsActionForm(
-        long id,
+        @Min(1) long id,
         String search,
         SortDto sort,
         Integer pageSize,

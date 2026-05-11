@@ -1,5 +1,6 @@
 package ru.yandex.practicum.controller;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,7 +28,7 @@ class CartController {
 
     @PostMapping(value = "/items", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Mono<Rendering> editCartItemsFromItems(
-            @ModelAttribute ItemsActionForm form,
+            @Valid @ModelAttribute ItemsActionForm form,
             @AuthenticationPrincipal SecurityUser currentUser) {
 
         if (currentUser == null) {
@@ -50,7 +51,7 @@ class CartController {
     @PostMapping(value = "/items/{id}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Mono<Rendering> editCartItemsFromItem(
             @PathVariable long id,
-            @ModelAttribute CartActionForm form,
+            @Valid @ModelAttribute CartActionForm form,
             @AuthenticationPrincipal SecurityUser currentUser) {
 
         if (currentUser == null) {
@@ -78,7 +79,7 @@ class CartController {
 
     @PostMapping(value = "/cart/items", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Mono<Rendering> editCartItemsFromCart(
-            @ModelAttribute CartActionForm form,
+            @Valid @ModelAttribute CartActionForm form,
             @AuthenticationPrincipal SecurityUser currentUser) {
 
         log.info("POST /cart/items - user={}, form={}", currentUser.getUsername(), form);
