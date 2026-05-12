@@ -16,8 +16,13 @@
                     <h2>
                         <span class="badge text-bg-success">Витрина магазина</span>
                     </h2>
-                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
+                    <span class="ms-auto text-muted" th:if="${#authentication}" th:text="${#authentication.name}"></span>
+                    <a th:if="${#authentication}" href="/orders" class="btn btn-secondary bi bi-file-earmark-text"> Заказы</a>
                     <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
+                    <a th:unless="${#authentication}" href="/login" class="btn btn-outline-primary ms-auto"> Войти</a>
+                    <form th:if="${#authentication}" th:action="@{/logout}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-danger bi bi-box-arrow-right" style="border: 1px solid #dc3545; color: #dc3545;"> Выйти</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -31,7 +36,7 @@
                             <span class="badge text-bg-success justify-content-end" th:text="${item.price()}+' руб.'"></span>
                         </h5>
                         <p class="card-text" th:text="${item.description()}"></p>
-                        <form th:action="@{/cart/items}" method="post">
+                        <form th:if="${#authentication}" th:action="@{/cart/items}" method="post">
                             <div class="hstack gap-3">
                                 <input type="hidden" name="id" th:value="${item.id()}">
                                 <button type="submit" class="btn btn-outline-secondary" name="action" value="MINUS">-</button>
@@ -40,18 +45,24 @@
                                 <button type="submit" class="btn btn-danger ms-auto bi bi-trash" name="action" value="DELETE"></button>
                             </div>
                         </form>
+                        <div th:unless="${#authentication}" class="alert alert-info mt-2 mb-0">
+                            <small><a href="/login">Войдите</a>, чтобы управлять корзиной</small>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="row p-2">
             <div class="col">
-                <form action="/buy" method="post" th:if="${!items.isEmpty()}">
-                    <div class="hstack gap-3">
+                <form th:if="${#authentication}" action="/buy" method="post">
+                    <div th:if="${!items.isEmpty()}" class="hstack gap-3">
                         <h2 th:text="'Итого: '+${total}+' руб.'"/>
                         <button class="btn btn-warning ms-auto">Купить</button>
                     </div>
                 </form>
+                <div th:unless="${#authentication}" class="alert alert-info mb-0">
+                    <small><a href="/login">Войдите</a>, чтобы оформить заказ</small>
+                </div>
             </div>
         </div>
     </div>

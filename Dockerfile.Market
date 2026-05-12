@@ -1,30 +1,40 @@
 # Этап 1: Сборка (Build stage)
-# Используем официальный образ Gradle с поддержкой JDK 21
 FROM gradle:8.14-jdk21 AS builder
 
-# Устанавливаем рабочую директорию
 WORKDIR /build
 
-# Копируем файлы сборки для кэширования зависимостей
-COPY build.gradle.kts settings.gradle.kts /build/
+# Устанавливаем CA-сертификаты
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates && \
+    # Импортируем системные сертификаты в Java truststore
+    keytool -importkeystore \
+        -srckeystore /etc/ssl/certs/java/cacerts \
+        -destkeystore $JAVA_HOME/lib/security/cacerts \
+        -srcstorepass changeit \
+        -deststorepass changeit \
+        -noprompt 2>/dev/null || true
+
+# Копируем файлы сборки (без gradlew - используем системный gradle)
+COPY build.gradle.kts settings.gradle.kts gradle.properties /build/
 COPY market /build/market
 COPY payments /build/payments
 
-# Собираем приложение (пропуская тесты для скорости)
+# Собираем приложение используя системный gradle (не wrapper)
 RUN gradle :market:bootJar --no-daemon -x test
 
 # Этап 2: Запуск (Runtime stage)
-# Используем легковесный образ JRE 21 для исполнения
 FROM eclipse-temurin:21-jre-jammy
 
-# Устанавливаем рабочую директорию для приложения
 WORKDIR /app
 
-# Копируем только скомпилированный JAR-файл из этапа сборки
-COPY --from=builder /build/market/build/libs/*.jar application.jar
+# Устанавливаем CA-сертификаты
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates
 
-# Spring Boot 4 по умолчанию работает на порту 8080
+COPY --from=builder /build/market/build/libs/market-1.0-SNAPSHOT.jar application.jar
+
 EXPOSE 8080
 
-# Запуск приложения
 ENTRYPOINT ["java", "-jar", "application.jar"]

@@ -5,7 +5,8 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE IF NOT EXISTS users(
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    login varchar(256) UNIQUE
+    login varchar(256) UNIQUE,
+    password varchar(256)
 );
 
 CREATE TABLE IF NOT EXISTS items(

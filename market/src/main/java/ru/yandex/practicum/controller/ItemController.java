@@ -20,7 +20,7 @@ class ItemController {
 
     @GetMapping({"/", "/items"})
     public Mono<Rendering> getItems(
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "") String search,
             @RequestParam(required = false, defaultValue = "ALPHA") SortDto sort,
             @RequestParam(required = false, defaultValue = "10") Integer pageSize,
             @RequestParam(required = false, defaultValue = "1") Integer pageNumber) {

@@ -1,5 +1,7 @@
 package ru.yandex.practicum.controller;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -7,12 +9,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.reactive.result.view.Rendering;
 import reactor.core.publisher.Mono;
+import ru.yandex.practicum.security.SecurityUser;
 import ru.yandex.practicum.service.OrderService;
 
+@Slf4j
 @Controller
 class OrderController {
 
-    private final String userLogin = "user";
     private final OrderService orderService;
 
     OrderController(OrderService orderService) {
@@ -20,8 +23,8 @@ class OrderController {
     }
 
     @GetMapping("/orders")
-    public Mono<Rendering> getOrders() {
-        return orderService.getUserOrders(userLogin)
+    public Mono<Rendering> getOrders(@AuthenticationPrincipal SecurityUser currentUser) {
+        return orderService.getUserOrders(currentUser.getUsername())
                 .map(viewData -> Rendering.view("orders")
                         .modelAttribute("orders", viewData.orders())
                         .build());
@@ -39,11 +42,16 @@ class OrderController {
     }
 
     @PostMapping("/buy")
-    public Mono<Rendering> buy() {
-        return orderService.createOrder(userLogin)
+    public Mono<Rendering> buy(@AuthenticationPrincipal SecurityUser currentUser) {
+        if (currentUser == null) {
+            log.info("POST /buy - anonymous user, redirecting to login");
+            return Mono.just(Rendering.redirectTo("/login?accessDenied").build());
+        }
+
+        return orderService.createOrder(currentUser.getUsername())
                 .map(id -> Rendering.redirectTo("/orders/" + id + "?newOrder=true").build())
                 .doOnError(e -> {
-                    System.err.println("ОШИБКА ПРИ СОЗДАНИИ ЗАКАЗА: " + e.getMessage());
+                    log.error("ОШИБКА ПРИ СОЗДАНИИ ЗАКАЗА: {}", e.getMessage());
                 })
                 .onErrorResume(e -> Mono.just(Rendering.view("error").build()));
     }

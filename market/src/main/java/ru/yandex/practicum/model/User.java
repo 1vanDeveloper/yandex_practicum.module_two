@@ -19,4 +19,7 @@ public class User {
     @Column("login")
     private String login;
 
+    @Column("password")
+    private String password;
+
 }

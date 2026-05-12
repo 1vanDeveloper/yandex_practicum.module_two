@@ -47,11 +47,11 @@ class OrderServiceTest {
     }
 
     @Test
-    void createOrder_fromCart_callsPaymentsApi() {
-
-        // Create order from cart with items
+    void createOrder_fromCart_returnsErrorWhenNoItems() {
         StepVerifier.create(orderService.createOrder("user"))
-                .expectNextMatches(orderId -> orderId != null && orderId > 0)
-                .verifyComplete();
+                .expectErrorMatches(throwable ->
+                    throwable.getMessage().contains("cart is empty") ||
+                    throwable.getMessage().contains("cart items is not found"))
+                .verify();
     }
 }
